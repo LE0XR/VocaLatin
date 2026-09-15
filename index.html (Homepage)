@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vokabel App - Basis</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,sans-serif}
+body{background:#111;color:#fff;max-width:500px;margin:0 auto;padding:16px}
+h2{margin:20px 0 10px;font-size:14px;letter-spacing:1px;color:#888;text-transform:uppercase}
+input,select{width:100%;background:#1e1e1e;border:1px solid #2a2a2a;color:#fff;padding:12px;border-radius:10px;margin-bottom:8px}
+.row{display:flex;gap:8px}
+.row>*{flex:1}
+.btn{width:100%;padding:14px;border-radius:12px;border:none;font-weight:700;cursor:pointer;margin-top:8px}
+.btn-add{background:#fff;color:#000}
+.btn-check{background:#ff3b30;color:#fff}
+.card{background:#1c1c1e;border-radius:20px;padding:20px;margin-top:16px;min-height:280px}
+.tag{font-size:11px;background:#2a2a2a;padding:4px 8px;border-radius:20px;color:#999}
+.latin{font-size:28px;font-weight:800;margin:10px 0}
+.de{color:#888}
+hr{border:none;border-top:1px solid #222;margin:12px 0}
+.list-item{background:#1c1c1e;padding:12px;border-radius:12px;margin-bottom:6px;display:flex;justify-content:space-between}
+</style>
+</head>
+<body>
+
+<h2>1. VOKABEL ANLEGEN</h2>
+<div class="row">
+  <input id="grund" placeholder="Grundform z.B. bellum">
+  <input id="genitiv" placeholder="Genitiv / Stammformen z.B. -i / tuli, latum">
+</div>
+<div class="row">
+  <select id="geschlecht"><option value="">Geschlecht</option><option>m</option><option>f</option><option>n</option><option>-</option></select>
+  <select id="dekl"><option value="">Dekl. / Konj.</option><option>a-Dekl.</option><option>o-Dekl.</option><option>3. Dekl.</option><option>a-Konjug.</option><option>e-Konjug.</option><option>i-Konjug.</option><option>kons. Konj.</option></select>
+  <select id="lektion"><option>Pontes L1</option><option>Pontes L2</option><option>Pontes L3</option><option>Caesar</option></select>
+</div>
+<input id="bedeutung" placeholder="Deutsche Bedeutung z.B. Krieg">
+<div class="row">
+  <input id="kasus" placeholder="Kasus-Rektion z.B. + Akk">
+  <input id="beispiel" placeholder="Beispielsatz z.B. bellum gerere">
+</div>
+<button class="btn btn-add" onclick="add()">+ Vokabel speichern</button>
+
+<h2>2. LERNEN - KARTEIKARTE + SRS</h2>
+<div class="card" id="card">
+  <div id="cardContent">Noch keine Vokabeln. Leg oben eine an.</div>
+  <div id="cardAction" style="display:none">
+    <input id="answer" placeholder="Antwort tippen...">
+    <button class="btn btn-check" onclick="check()">Prüfen - Richtig / Falsch</button>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="btn" style="background:#222" onclick="next(false)">Falsch -> Fehler-Ordner</button>
+      <button class="btn" style="background:#222" onclick="next(true)">Richtig</button>
+    </div>
+  </div>
+</div>
+
+<h2>3. LISTE / SUCHE / FILTER / STATISTIK</h2>
+<input id="search" placeholder="Suche..." oninput="render()">
+<div id="stats" style="color:#666;font-size:12px;margin:8px 0"></div>
+<div id="list"></div>
+
+<script>
+let vokabeln = JSON.parse(localStorage.getItem('voks') || '[]');
+let current = 0;
+let mode = 'LA-DE'; // wechselbar
+
+function add(){
+  let v = {
+    grund: grund.value,
+    genitiv: genitiv.value,
+    geschlecht: geschlecht.value,
+    dekl: dekl.value,
+    bedeutung: bedeutung.value,
+    kasus: kasus.value,
+    beispiel: beispiel.value,
+    lektion: lektion.value,
+    level: 0
+  };
+  if(!v.grund ||!v.bedeutung) return alert('Grundform + Bedeutung nötig');
+  vokabeln.push(v);
+  localStorage.setItem('voks', JSON.stringify(vokabeln));
+  render(); showCard();
+  grund.value=genitiv.value=bedeutung.value=kasus.value=beispiel.value='';
+}
+
+function showCard(){
+  if(vokabeln.length==0) return;
+  let v = vokabeln[current % vokabeln.length];
+  let laDe = mode==='LA-DE';
+  document.getElementById('cardContent').innerHTML = `
+    <div class="tag">${v.lektion} • ${v.dekl} • ${v.geschlecht} ${v.kasus? '• '+v.kasus:''}</div>
+    <div class="latin">${laDe? v.grund : v.bedeutung}</div>
+    <div class="de">${laDe? v.grund+', '+v.genitiv : v.grund+', '+v.genitiv+' = '+v.bedeutung}</div>
+    <hr>
+    <div style="font-size:13px;color:#666">Beispiel: ${v.beispiel || '-'}<br>Abfrage: ${mode}</div>
+  `;
+  document.getElementById('cardAction').style.display='block';
+  document.getElementById('answer').value='';
+}
+
+function check(){
+  let v = vokabeln[current % vokabeln.length];
+  let inp = answer.value.toLowerCase();
+  let soll = (mode==='LA-DE'? v.bedeutung : v.grund).toLowerCase();
+  if(inp && soll.includes(inp) || inp.includes(soll.split(' ')[0])){
+    document.getElementById('cardContent').innerHTML += `<div style="color:#30d158;margin-top:10px">✓ Richtig: ${v.grund} = ${v.bedeutung}</div>`;
+  } else {
+    document.getElementById('cardContent').innerHTML += `<div style="color:#ff453a;margin-top:10px">✗ Richtig wäre: ${mode==='LA-DE'? v.bedeutung : v.grund}</div>`;
+  }
+}
+
+function next(ok){
+  if(ok) vokabeln[current].level++;
+  else vokabeln[current].level=0;
+  current++; mode = mode==='LA-DE'? 'DE-LA':'LA-DE';
+  localStorage.setItem('voks', JSON.stringify(vokabeln));
+  showCard(); render();
+}
+
+function render(){
+  let q = search.value.toLowerCase();
+  let filtered = vokabeln.filter(v=> (v.grund+v.bedeutung+v.lektion).toLowerCase().includes(q));
+  document.getElementById('list').innerHTML = filtered.map(v=>`
+    <div class="list-item"><span><b>${v.grund}, ${v.genitiv}</b> <small style="color:#666">${v.geschlecht} ${v.dekl}</small><br><small>${v.bedeutung} • ${v.kasus} • ${v.beispiel}</small></span><span class="tag">Lv${v.level}</span></div>
+  `).join('');
+  document.getElementById('stats').innerText = `Gesamt: ${vokabeln.length} | Gelernt (Level>2): ${vokabeln.filter(v=>v.level>2).length} | Fehler (Level 0): ${vokabeln.filter(v=>v.level==0).length}`;
+}
+
+render(); showCard();
+</script>
+</body>
+</html>
