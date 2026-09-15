@@ -1,2 +1,0 @@
-# VocaLatin
-Latein Vokabel app
